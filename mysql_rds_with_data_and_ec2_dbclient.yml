@@ -200,6 +200,25 @@ Resources:
     Type: 'AWS::EC2::KeyPair'
     Properties:
       KeyName: DemoKeyPair
+
+  DemoIAMRole:
+    Type: "AWS::IAM::Role"
+    Properties:
+      Path: "/"
+      RoleName: "DemoRoleSecrets"
+      AssumeRolePolicyDocument: "{\"Version\":\"2012-10-17\",\"Statement\":[{\"Effect\":\"Allow\",\"Principal\":{\"Service\":\"ec2.amazonaws.com\"},\"Action\":\"sts:AssumeRole\"}]}"
+      MaxSessionDuration: 3600
+      ManagedPolicyArns: 
+        - "arn:aws:iam::aws:policy/SecretsManagerReadWrite"
+      Description: "Allows EC2 instances to call AWS services on your behalf."
+
+  DemoInstanceProfile:
+    Type: "AWS::IAM::InstanceProfile"
+    Properties:
+      Path: "/"
+      InstanceProfileName: !Ref DemoIAMRole
+      Roles: 
+        - !Ref DemoIAMRole
   
   DemoEC2Instance:
     Type: 'AWS::EC2::Instance'
@@ -211,6 +230,7 @@ Resources:
       SecurityGroupIds:
         - !Ref DemoSecurityGroup2
       UserData: 'IyEvYmluL2Jhc2gKeXVtIHVwZGF0ZSAteQp5dW0gaW5zdGFsbCAteSBkb2NrZXIKc2VydmljZSBkb2NrZXIgc3RhcnQKZG9ja2VyIHJ1biAtLW5hbWUgbXlhZG1pbiAtZCAtZSBQTUFfQVJCSVRSQVJZPTEgLXAgODA6ODAgcGhwbXlhZG1pbgpjdXJsICJodHRwczovL2F3c2NsaS5hbWF6b25hd3MuY29tL2F3c2NsaS1leGUtbGludXgteDg2XzY0LnppcCIgLW8gImF3c2NsaXYyLnppcCIKdW56aXAgYXdzY2xpdjIuemlwCnN1ZG8gLi9hd3MvaW5zdGFsbAp5dW0gaW5zdGFsbCAteSBqcQp5dW0gaW5zdGFsbCAteSBteXNxbApta2RpciBkYi1kYXRhCmNkIGRiLWRhdGEKd2dldCBodHRwczovL3Jhdy5naXRodWJ1c2VyY29udGVudC5jb20vYXdzLXNhbXBsZXMvYW1hem9uLWF1cm9yYS1teXNxbC1zYW1wbGUtaHItc2NoZW1hL21hc3Rlci9oci1zY2hlbWEuc3FsCnRvdWNoIG9wdGlvbnMuaW5pCmNobW9kIDYwMCBvcHRpb25zLmluaQpjYXQgPDwgRU9GID4gb3B0aW9ucy5pbmkKW2NsaWVudF0KaG9zdCA9ICQoYXdzIHNlY3JldHNtYW5hZ2VyIGdldC1zZWNyZXQtdmFsdWUgLS1yZWdpb24gdXMtZWFzdC0xIC0tc2VjcmV0LWlkIGRlbW8vbXlzcWwgIC0tcXVlcnkgJ1NlY3JldFN0cmluZycgLS1vdXRwdXQgdGV4dCB8IGpxIC5ob3N0IHwgdHIgLWQgJyInKQp1c2VyID0gJChhd3Mgc2VjcmV0c21hbmFnZXIgZ2V0LXNlY3JldC12YWx1ZSAtLXJlZ2lvbiB1cy1lYXN0LTEgLS1zZWNyZXQtaWQgZGVtby9teXNxbCAgLS1xdWVyeSAnU2VjcmV0U3RyaW5nJyAtLW91dHB1dCB0ZXh0IHwganEgLnVzZXJuYW1lIHwgdHIgLWQgJyInKQpwYXNzd29yZCA9ICQoYXdzIHNlY3JldHNtYW5hZ2VyIGdldC1zZWNyZXQtdmFsdWUgLS1yZWdpb24gdXMtZWFzdC0xIC0tc2VjcmV0LWlkIGRlbW8vbXlzcWwgIC0tcXVlcnkgJ1NlY3JldFN0cmluZycgLS1vdXRwdXQgdGV4dCB8IGpxIC5wYXNzd29yZCB8IHRyIC1kICciJykKRU9GCm15c3FsIC0tZGVmYXVsdHMtZmlsZT1vcHRpb25zLmluaSA8IGhyLXNjaGVtYS5zcWwKcm0gLWYgb3B0aW9ucy5pbmk='
+      IamInstanceProfile: !Ref DemoInstanceProfile
       Tags:
         - Key: 'Name'
           Value: demoDbClient
