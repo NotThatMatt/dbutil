@@ -1,0 +1,217 @@
+AWSTemplateFormatVersion: '2010-09-09'
+Description: 'This CFN template creates a populated RDS MySQL instance with credentials stored in Secrets Manager. Also creates an EC2 instance with PHP MyAdmin MySQL database client running on port 80. Use only in us-east-1'
+
+Resources:
+  DemoVPC:
+    Type: 'AWS::EC2::VPC'
+    Properties:
+      CidrBlock: '10.0.0.0/16'
+      EnableDnsSupport: true
+      EnableDnsHostnames: true
+      InstanceTenancy: 'default'
+      Tags:
+        - Key: 'Name'
+          Value: 'demo-vpc'
+
+  DemoSubnet:
+    Type: 'AWS::EC2::Subnet'
+    Properties:
+      AvailabilityZone: !GetAtt DemoSubnet3.AvailabilityZone
+      CidrBlock: '10.0.128.0/20'
+      VpcId: !Ref DemoVPC
+      MapPublicIpOnLaunch: false
+      Tags:
+        - Key: 'Name'
+          Value: !Sub 'demo-subnet-private1-${DemoSubnet3.AvailabilityZone}'
+
+  DemoSubnet2:
+    Type: 'AWS::EC2::Subnet'
+    Properties:
+      AvailabilityZone: !GetAtt DemoSubnet4.AvailabilityZone
+      CidrBlock: '10.0.144.0/20'
+      VpcId: !Ref DemoVPC
+      MapPublicIpOnLaunch: false
+      Tags:
+        - Key: 'Name'
+          Value: !Sub 'demo-subnet-private2-${DemoSubnet4.AvailabilityZone}'
+
+  DemoSubnet3:
+    Type: 'AWS::EC2::Subnet'
+    Properties:
+      AvailabilityZone: !Sub '${AWS::Region}a'
+      CidrBlock: '10.0.0.0/20'
+      VpcId: !Ref DemoVPC
+      MapPublicIpOnLaunch: true
+      Tags:
+        - Key: 'Name'
+          Value: !Sub 'demo-subnet-public1-${AWS::Region}a'
+
+  DemoSubnet4:
+    Type: 'AWS::EC2::Subnet'
+    Properties:
+      AvailabilityZone: !Sub '${AWS::Region}b'
+      CidrBlock: '10.0.16.0/20'
+      VpcId: !Ref DemoVPC
+      MapPublicIpOnLaunch: true
+      Tags:
+        - Key: 'Name'
+          Value: !Sub 'demo-subnet-public2-${AWS::Region}b'
+
+  DemoIG:
+    Type: 'AWS::EC2::InternetGateway'
+    Properties:
+      Tags:
+        - Key: 'Name'
+          Value: 'demo-igw'
+
+  DemoGatewayAttachment:
+    Type: 'AWS::EC2::VPCGatewayAttachment'
+    Properties:
+      InternetGatewayId: !Ref DemoIG
+      VpcId: !Ref DemoVPC
+
+  DemoRouteTable:
+    Type: 'AWS::EC2::RouteTable'
+    Properties:
+      VpcId: !Ref DemoVPC
+      Tags:
+        - Key: 'Name'
+          Value: !Sub 'demo-rtb-private'
+
+  DemoRouteTable2:
+    Type: 'AWS::EC2::RouteTable'
+    Properties:
+      VpcId: !Ref DemoVPC
+      Tags:
+        - Key: 'Name'
+          Value: 'demo-rtb-public'
+
+  DemoRoute:
+    Type: 'AWS::EC2::Route'
+    Properties:
+      DestinationCidrBlock: '0.0.0.0/0'
+      GatewayId: !Ref DemoIG
+      RouteTableId: !Ref DemoRouteTable2
+
+  DemoSubnetRouteTableAssociation:
+    Type: 'AWS::EC2::SubnetRouteTableAssociation'
+    Properties:
+      RouteTableId: !Ref DemoRouteTable
+      SubnetId: !Ref DemoSubnet
+
+  DemoSubnetRouteTableAssociation2:
+    Type: 'AWS::EC2::SubnetRouteTableAssociation'
+    Properties:
+      RouteTableId: !Ref DemoRouteTable
+      SubnetId: !Ref DemoSubnet2
+
+  DemoSubnetRouteTableAssociation3:
+    Type: 'AWS::EC2::SubnetRouteTableAssociation'
+    Properties:
+      RouteTableId: !Ref DemoRouteTable2
+      SubnetId: !Ref DemoSubnet3
+
+  DemoSubnetRouteTableAssociation4:
+    Type: 'AWS::EC2::SubnetRouteTableAssociation'
+    Properties:
+      RouteTableId: !Ref DemoRouteTable2
+      SubnetId: !Ref DemoSubnet4
+
+  DemoSecurityGroup:
+    Type: 'AWS::EC2::SecurityGroup'
+    Properties:
+      GroupDescription: 'mysql access'
+      GroupName: 'rds-sg'
+      VpcId: !Ref DemoVPC
+      SecurityGroupIngress:
+        - SourceSecurityGroupId: !Ref DemoSecurityGroup2
+          SourceSecurityGroupOwnerId: !Ref AWS::AccountId
+          FromPort: 3306
+          IpProtocol: 'tcp'
+          ToPort: 3306
+      SecurityGroupEgress:
+        - CidrIp: '0.0.0.0/0'
+          IpProtocol: '-1'
+
+  DemoSecurityGroup2:
+    Type: 'AWS::EC2::SecurityGroup'
+    Properties:
+      GroupDescription: 'db client access'
+      GroupName: 'ec2-sg'
+      VpcId: !Ref DemoVPC
+      SecurityGroupIngress:
+        - CidrIp: '0.0.0.0/0'
+          FromPort: 80
+          IpProtocol: 'tcp'
+          ToPort: 80
+        - CidrIp: '0.0.0.0/0'
+          FromPort: 22
+          IpProtocol: 'tcp'
+          ToPort: 22
+      SecurityGroupEgress:
+        - CidrIp: '0.0.0.0/0'
+          IpProtocol: '-1'
+
+  DemoSecretsManager:
+    Type: 'AWS::SecretsManager::Secret'
+    Properties:
+      Description: AWS RDS admin credentials
+      Name: demo/mysql
+      GenerateSecretString:
+        SecretStringTemplate: '{"username": "admin"}'
+        GenerateStringKey: password
+        PasswordLength: 32
+        ExcludeCharacters: '"@/\'
+
+  DemoRDS:
+    Type: 'AWS::RDS::DBInstance'
+    Properties:
+      AllocatedStorage: 20
+      DBInstanceClass: db.t2.micro
+      DBInstanceIdentifier: DemoDB
+      Engine: mysql
+      DBSubnetGroupName: !Ref DemoDBSubnetGroup
+      MasterUsername: !Sub '{{resolve:secretsmanager:${DemoSecretsManager}::username}}'
+      MasterUserPassword: !Sub '{{resolve:secretsmanager:${DemoSecretsManager}::password}}'
+      BackupRetentionPeriod: 0
+      VPCSecurityGroups:
+        - !GetAtt DemoSecurityGroup.GroupId
+
+  DemoDBSubnetGroup:
+    Type: 'AWS::RDS::DBSubnetGroup'
+    Properties:
+      DBSubnetGroupDescription: Demo Subnet Group
+      SubnetIds:
+        - !Ref DemoSubnet
+        - !Ref DemoSubnet2
+      Tags:
+        - Key: 'Name'
+          Value: !Sub 'DemoDBSubnetGroup'
+
+  DemoSecretAttachment:
+    Type: 'AWS::SecretsManager::SecretTargetAttachment'
+    Properties:
+      SecretId: !Ref DemoSecretsManager
+      TargetId: !Ref DemoRDS
+      TargetType: 'AWS::RDS::DBInstance'
+    DependsOn: DemoRDS
+    
+  DemoKeyPair:
+    Type: 'AWS::EC2::KeyPair'
+    Properties:
+      KeyName: DemoKeyPair
+  
+  DemoEC2Instance:
+    Type: 'AWS::EC2::Instance'
+    Properties:
+      ImageId: 'ami-090fa75af13c156b4'
+      KeyName: !Ref DemoKeyPair
+      InstanceType: 't2.small'
+      SubnetId: !Ref DemoSubnet3
+      SecurityGroupIds:
+        - !Ref DemoSecurityGroup2
+      UserData: 'IyEvYmluL2Jhc2gKeXVtIHVwZGF0ZSAteQp5dW0gaW5zdGFsbCAteSBkb2NrZXIKc2VydmljZSBkb2NrZXIgc3RhcnQKZG9ja2VyIHJ1biAtLW5hbWUgbXlhZG1pbiAtZCAtZSBQTUFfQVJCSVRSQVJZPTEgLXAgODA6ODAgcGhwbXlhZG1pbgpjdXJsICJodHRwczovL2F3c2NsaS5hbWF6b25hd3MuY29tL2F3c2NsaS1leGUtbGludXgteDg2XzY0LnppcCIgLW8gImF3c2NsaXYyLnppcCIKdW56aXAgYXdzY2xpdjIuemlwCnN1ZG8gLi9hd3MvaW5zdGFsbAp5dW0gaW5zdGFsbCAteSBqcQp5dW0gaW5zdGFsbCAteSBteXNxbApta2RpciBkYi1kYXRhCmNkIGRiLWRhdGEKd2dldCBodHRwczovL3Jhdy5naXRodWJ1c2VyY29udGVudC5jb20vYXdzLXNhbXBsZXMvYW1hem9uLWF1cm9yYS1teXNxbC1zYW1wbGUtaHItc2NoZW1hL21hc3Rlci9oci1zY2hlbWEuc3FsCnRvdWNoIG9wdGlvbnMuaW5pCmNobW9kIDYwMCBvcHRpb25zLmluaQpjYXQgPDwgRU9GID4gb3B0aW9ucy5pbmkKW2NsaWVudF0KaG9zdCA9ICQoYXdzIHNlY3JldHNtYW5hZ2VyIGdldC1zZWNyZXQtdmFsdWUgLS1yZWdpb24gdXMtZWFzdC0xIC0tc2VjcmV0LWlkIGRlbW8vbXlzcWwgIC0tcXVlcnkgJ1NlY3JldFN0cmluZycgLS1vdXRwdXQgdGV4dCB8IGpxIC5ob3N0IHwgdHIgLWQgJyInKQp1c2VyID0gJChhd3Mgc2VjcmV0c21hbmFnZXIgZ2V0LXNlY3JldC12YWx1ZSAtLXJlZ2lvbiB1cy1lYXN0LTEgLS1zZWNyZXQtaWQgZGVtby9teXNxbCAgLS1xdWVyeSAnU2VjcmV0U3RyaW5nJyAtLW91dHB1dCB0ZXh0IHwganEgLnVzZXJuYW1lIHwgdHIgLWQgJyInKQpwYXNzd29yZCA9ICQoYXdzIHNlY3JldHNtYW5hZ2VyIGdldC1zZWNyZXQtdmFsdWUgLS1yZWdpb24gdXMtZWFzdC0xIC0tc2VjcmV0LWlkIGRlbW8vbXlzcWwgIC0tcXVlcnkgJ1NlY3JldFN0cmluZycgLS1vdXRwdXQgdGV4dCB8IGpxIC5wYXNzd29yZCB8IHRyIC1kICciJykKRU9GCm15c3FsIC0tZGVmYXVsdHMtZmlsZT1vcHRpb25zLmluaSA8IGhyLXNjaGVtYS5zcWwKcm0gLWYgb3B0aW9ucy5pbmk='
+      Tags:
+        - Key: 'Name'
+          Value: demoDbClient
+    DependsOn: DemoSecretAttachment

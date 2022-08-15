@@ -15,9 +15,9 @@ touch options.ini
 chmod 600 options.ini
 cat << EOF > options.ini
 [client]
-host = $(aws secretsmanager get-secret-value --secret-id test/mysql  --query 'SecretString' --output text | jq .host | tr -d '"')
-user = $(aws secretsmanager get-secret-value --secret-id test/mysql  --query 'SecretString' --output text | jq .username | tr -d '"')
-password = $(aws secretsmanager get-secret-value --secret-id test/mysql  --query 'SecretString' --output text | jq .password | tr -d '"')
+host = $(aws secretsmanager get-secret-value --region us-east-1 --secret-id test/mysql  --query 'SecretString' --output text | jq .host | tr -d '"')
+user = $(aws secretsmanager get-secret-value --region us-east-1 --secret-id test/mysql  --query 'SecretString' --output text | jq .username | tr -d '"')
+password = $(aws secretsmanager get-secret-value --region us-east-1 --secret-id test/mysql  --query 'SecretString' --output text | jq .password | tr -d '"')
 EOF
 mysql --defaults-file=options.ini < employees.sql
 rm -f options.ini
