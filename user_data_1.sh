@@ -2,7 +2,7 @@
 yum update -y
 yum install -y docker
 service docker start
-docker run --name myadmin -d -e PMA_ARBITRARY=1 -p 80:80 phpmyadmin
+docker run --name adminer1 -d -p 80:8080 adminer
 curl "https://awscli.amazonaws.com/awscli-exe-linux-x86_64.zip" -o "awscliv2.zip"
 unzip awscliv2.zip
 sudo ./aws/install
