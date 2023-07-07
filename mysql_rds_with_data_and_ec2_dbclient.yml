@@ -171,7 +171,7 @@ Resources:
       DBInstanceClass: db.t3.micro
       DBInstanceIdentifier: DemoDB
       Engine: mysql
-      EngineVersion: 5.7.41
+      EngineVersion: 8.0.32
       DBSubnetGroupName: !Ref DemoDBSubnetGroup
       MasterUsername: !Sub '{{resolve:secretsmanager:${DemoSecretsManager}::username}}'
       MasterUserPassword: !Sub '{{resolve:secretsmanager:${DemoSecretsManager}::password}}'
