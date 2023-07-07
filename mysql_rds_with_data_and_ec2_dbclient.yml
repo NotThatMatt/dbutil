@@ -225,7 +225,7 @@ Resources:
   DemoEC2Instance:
     Type: 'AWS::EC2::Instance'
     Properties:
-      ImageId: 'ami-090fa75af13c156b4'
+      ImageId: 'ami-06ca3ca175f37dd66'
       KeyName: !Ref DemoKeyPair
       InstanceType: 't3.large'
       SubnetId: !Ref DemoSubnet3
